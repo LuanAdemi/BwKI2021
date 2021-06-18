@@ -33,7 +33,24 @@ class Player:
                 
         print("[Warning] Card not playable.")
         return False
-        
+
+
+class Logger:
+    """A class that logs games to a file or wandb"""
+    def __init__(self, env, level=1, wandb=True, wandb_project="board-game-agent"):
+        self.env = env
+        self.level = level
+        self.wandb = wandb
+        self.wandb_project = wandb_project
+
+        # if wandb logging is enabled, initialize wandb
+        if self.wandb:
+            wandb.login()
+            self.run = wandb.init(project=self.wandb_project)
+
+
+    def close(self):
+        wandb.run.finish()        
 
 class Stack:
     """
