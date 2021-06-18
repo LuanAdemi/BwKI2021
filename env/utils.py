@@ -1,6 +1,20 @@
 import random as rn
 import os
 
+from collections import namedtuple
+import inspect
+from functools import wraps
+
+
+def logged(f):
+    def wrapper(*args):
+        logger = args[0].logger
+        if logger is not None:
+            print(f.__name__)
+            logger.log(type=f.__name__, data=args[0:])
+        return f(*args)
+    return wrapper
+
 class Player:
     """
     A player class containing the player hand 
@@ -10,20 +24,24 @@ class Player:
     def numCards(self):
         return len(self.hand)
     
-    def __init__(self, id):
+    def __init__(self, id, logger=None):
         self.hand = []
         self.id = id
+
+        self.logger = logger
 
     def __repr__(self):
         return f"Player(id={self.id}, hand={self.hand})"
         
     # gets n cards from the stack
+    @logged
     def getCards(self, n,  pullStack):
         cards = pullStack.draw(n)
         for c in cards:
             self.hand.append(c)
 
     # plays a card
+    @logged
     def playCard(self, card, playStack):
         if card in self.hand:
             # rule set
@@ -43,14 +61,32 @@ class Logger:
         self.level = level
         self.wandb = wandb
         self.wandb_project = wandb_project
+        
+        # logging containers
+        self.moves = []
+        self.move = namedtuple("Move", ["player_id", "hand", "played_card"])
 
         # if wandb logging is enabled, initialize wandb
         if self.wandb:
             wandb.login()
             self.run = wandb.init(project=self.wandb_project)
     
+    def log(self, type, data):
+        if type == "playCard":
+            self.moves.append(self.move(data[0].id, data[0].hand, data[1]))
+
+    def register_calls(f):
+        @wraps(f)
+        def f_call(*args, **kw):
+            self.moves.append(self.move(args[0].id, args[1]))
+            return f(*args, **kw)
+        return f_call
+
     def uploadCheckpoints(self, path):
         wandb.save(os.path.join(path, "checkpoint*"))
+
+    def generatePlayback(self):
+        return NotImplementedError
 
     def close(self):
         wandb.run.finish()        

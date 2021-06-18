@@ -1,4 +1,4 @@
-from utils import Player, Stack
+from utils import Player, Stack, Logger
 
 class MauMauEnvironment:
     def __init__(self, num_cards, num_players):
@@ -6,7 +6,7 @@ class MauMauEnvironment:
         self.players = []
         self.pullStack = Stack('pull')
         self.playStack = Stack('play')
-        
+
         # define our deck
         self.colors = ["D", "H", "C", "S"]
         self.numbers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
