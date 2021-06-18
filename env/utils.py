@@ -1,4 +1,5 @@
 import random as rn
+import os
 
 class Player:
     """
@@ -47,7 +48,9 @@ class Logger:
         if self.wandb:
             wandb.login()
             self.run = wandb.init(project=self.wandb_project)
-
+    
+    def uploadCheckpoints(self, path):
+        wandb.save(os.path.join(path, "checkpoint*"))
 
     def close(self):
         wandb.run.finish()        
