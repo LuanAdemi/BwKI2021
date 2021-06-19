@@ -1,9 +1,9 @@
 import random as rn
 import os
 
+import numpy as np
+
 from collections import namedtuple
-import inspect
-from functools import wraps
 
 # a standart 52 cards deck
 CARDS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA",
@@ -21,11 +21,13 @@ def logged(f):
         return f(*args)
     return wrapper
 
+# a player class
 class Player:
     """
     A player class containing the player hand 
     and several methods to manipulate it.
     """
+    # returns the number of cards in the player hand
     @property
     def numCards(self):
         return len(self.hand)
@@ -73,7 +75,17 @@ class Player:
 
 
 class Logger:
-    """A class that logs games to a file or wandb"""
+    """A class that logs games to a file or wandb
+
+         -|Logger|-------> File & WandB
+       /      |      \
+    Game    Game    Game
+      |       |       |
+   Players Players Players
+      |       |       |
+    Moves   Moves   Moves
+    
+    """
     def __init__(self, env, level=1, wandb=False, wandb_project="board-game-agent"):
         self.env = env
         self.level = level
@@ -81,18 +93,38 @@ class Logger:
         self.wandb_project = wandb_project
         
         # logging containers
-        self.moves = []
+        self.games = {}
+        self.game = namedtuple("Game", ["env_args", "moves", "winner"])
         self.move = namedtuple("Move", ["player_id", "hand", "played_card"])
 
         # if wandb logging is enabled, initialize wandb
         if self.wandb:
             wandb.login()
             self.run = wandb.init(project=self.wandb_project)
+    
+    # returns the game count of the logger
+    @property
+    def gameCount(self):
+        return len(list(self.games.keys()))
+    
+    # returns a list of the current logged games and their ids
+    @property
+    def gameKeys(self):
+        return list(self.games.keys())
 
     # logs specific types of method calls
-    def log(self, type, data):
+    def log(self, game_id, type, data):
+        assert game_id in list(self.games.keys()), f"The game with the id {game_id} does not exist."
+        
+        # type definition
         if type == "playCard":
-            self.moves.append(self.move(data[0].id, data[0].hand, data[1]))
+            self.games[game_id].moves.append(self.move(data[0].id, data[0].hand, data[1]))
+    
+    # creates a new game
+    def newGame(self, game_id, env_args):
+        assert game_id not in list(self.games.keys()), f"The game with the id {game_id} does already exist."
+        # init a new game
+        self.games[game_id] = self.game(env_args, [], "")
 
     # uploads the model checkpoints to wandb
     def uploadCheckpoints(self, path):
@@ -100,7 +132,7 @@ class Logger:
             wandb.save(os.path.join(path, "checkpoint*"))
 
     # generates a playback file from the stored moves
-    def generatePlayback(self, path):
+    def generatePlayback(self, game_id, path):
         return NotImplementedError
 
     # closes the wandb run
@@ -128,8 +160,13 @@ class Stack:
         return len(self.stack)
 
     def __repr__(self):
-        return f"Stack(id={self.id}, cards=[{self.first}, ..., {self.last}], len={len(self.stack)})"
-    
+        if len(self.stack) > 2:
+            return f"Stack(id={self.id}, cards=[{self.first}, ..., {self.last}], len={len(self.stack)})"
+        elif len(self.stack) == 2:
+            return f"Stack(id={self.id}, cards=[{self.first}, {self.last}], len={len(self.stack)})"
+        else:
+            return f"Stack(id={self.id}, cards=[{self.first}], len={len(self.stack)})"
+
     # returns the first element of the stack
     @property
     def first(self):
