@@ -5,7 +5,13 @@ from collections import namedtuple
 import inspect
 from functools import wraps
 
+# a standart 52 cards deck
+CARDS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA",
+         "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA",
+         "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA",
+         "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA"]
 
+# a decorator function for logging events
 def logged(f):
     def wrapper(*args):
         logger = args[0].logger
@@ -45,7 +51,7 @@ class Player:
     def playCard(self, card, playStack):
         if card in self.hand:
             # rule set
-            if any(ele in playStack[-1] for ele in list(card)):
+            if any(ele in playStack.last for ele in list(card)):
                 playStack.append(card)
                 self.hand.remove(card)
                 return True
@@ -53,10 +59,22 @@ class Player:
         print("[Warning] Card not playable.")
         return False
 
+    # returns a bool array containing all legal moves from the 53 moves in total
+    def getActionMask(self, playStack):
+        # all cards + drawing
+        mask = [0 for _ in range(len(CARDS)+1)]
+        for card in self.hand:
+            if any(ele in playStack.last for ele in list(card)):
+                mask[CARDS.index(card)] = 1
+
+        # drawing is always an option
+        mask[-1] = 1
+        return mask
+
 
 class Logger:
     """A class that logs games to a file or wandb"""
-    def __init__(self, env, level=1, wandb=True, wandb_project="board-game-agent"):
+    def __init__(self, env, level=1, wandb=False, wandb_project="board-game-agent"):
         self.env = env
         self.level = level
         self.wandb = wandb
@@ -70,26 +88,26 @@ class Logger:
         if self.wandb:
             wandb.login()
             self.run = wandb.init(project=self.wandb_project)
-    
+
+    # logs specific types of method calls
     def log(self, type, data):
         if type == "playCard":
             self.moves.append(self.move(data[0].id, data[0].hand, data[1]))
 
-    def register_calls(f):
-        @wraps(f)
-        def f_call(*args, **kw):
-            self.moves.append(self.move(args[0].id, args[1]))
-            return f(*args, **kw)
-        return f_call
-
+    # uploads the model checkpoints to wandb
     def uploadCheckpoints(self, path):
-        wandb.save(os.path.join(path, "checkpoint*"))
+        if self.wandb:
+            wandb.save(os.path.join(path, "checkpoint*"))
 
-    def generatePlayback(self):
+    # generates a playback file from the stored moves
+    def generatePlayback(self, path):
         return NotImplementedError
 
+    # closes the wandb run
     def close(self):
-        wandb.run.finish()        
+        if self.wandb:
+            wandb.run.finish()
+
 
 class Stack:
     """
