@@ -21,6 +21,17 @@ def logged(f):
         return f(*args)
     return wrapper
 
+def cardToASCII(card):
+    symbol = {"S": "♠", "H" :"♥", "C": "♣", "D": "♦"}
+    template = ["" for _ in range(7)]
+    template[0] = "┌─────────┐"
+    template[1] = f"│ {(symbol[card[0]] + card[1:]):3}     │"
+    template[2] = "│         │"
+    template[3] = f"│    {card[1:]:2}   │"
+    template[4] = "│         │"
+    template[5] = f"│      {(symbol[card[0]] + card[1:]):3}│"
+    template[6] = "└─────────┘"
+    return template
 # a player class
 class Player:
     """
@@ -100,7 +111,7 @@ class Logger:
         # if wandb logging is enabled, initialize wandb
         if self.wandb:
             wandb.login()
-            self.run = wandb.init(project=self.wandb_project)
+            self.run = wandb.init(project=self.wandb_project, tags=[self.env.__name__])
     
     # returns the game count of the logger
     @property
@@ -121,7 +132,7 @@ class Logger:
             self.games[game_id].moves.append(self.move(data[0].id, data[0].hand, data[1]))
     
     # creates a new game
-    def newGame(self, game_id, env_args):
+    def addGame(self, game_id, env_args):
         assert game_id not in list(self.games.keys()), f"The game with the id {game_id} does already exist."
         # init a new game
         self.games[game_id] = self.game(env_args, [], "")
@@ -150,8 +161,6 @@ class Stack:
     def __init__(self, id):
         self.id = id   
         self.stack = []
-        self.colors = ["D", "H", "C", "S"]
-        self.numbers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
         
     def __getitem__(self, idx):
         return self.stack[idx]
