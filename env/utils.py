@@ -1,6 +1,11 @@
 import random as rn
 import os
 
+from math import floor
+from numba.experimental import jitclass
+import numba as nm
+from numba.types import List, string
+
 import numpy as np
 
 from collections import namedtuple
@@ -160,6 +165,24 @@ class Logger:
             wandb.run.finish()
 
 
+from numba import typed, types
+
+
+specs = [
+    ('id', string),
+    ('deck', List(string)),
+    ('stack', types.ListType(string)),
+    ('colors', types.ListType(string)),
+    ('numbers', types.ListType(string)),
+    ('idx', nm.int32),
+    ('idxs', List(nm.int32)),
+    ('item', string),
+    ('n', nm.int32)
+]
+
+
+
+@jitclass(specs)
 class Stack:
     """
     A class representing a stack of cards
@@ -168,13 +191,13 @@ class Stack:
     #ids = 'pull', 'play',
     def __init__(self, id):
         self.id = id   
-        self.stack = []
+        self.stack = typed.List.empty_list(string)
         
     def __getitem__(self, idx):
         return self.stack[idx]
     
     def __len__(self):
-        return len(self.stack)
+        return self.stack.shape[0]
 
     def __repr__(self):
         if len(self.stack) > 2:
@@ -213,17 +236,22 @@ class Stack:
     
     # shuffles the stack
     def shuffle(self):
-        rn.shuffle(self.stack)
+        amnt_to_shuffle = len(self.stack)
+        while amnt_to_shuffle > 1:
+            i = int(floor(rn.random() * amnt_to_shuffle))
+            amnt_to_shuffle -= 1 
+            self.stack[i], self.stack[amnt_to_shuffle] = self.stack[amnt_to_shuffle], self.stack[i]
 
     # draws n cards from the stack
     def draw(self, n):
         cards = self.stack[:n]
         for c in cards:
-            self.stack.remove(c)
+            self.remove(c)
         return cards
 
+    # not working with numba, since reference to other class
     # deals n cards to n player from the current deck
-    def deal(self, players, num_cards):
-        for _ in range(num_cards):
-            for player in players:
-                player.getCards(1, self)
+#    def deal(self, players, num_cards):
+#        for _ in range(num_cards):
+#            for player in players:
+#                player.getCards(1, self)
