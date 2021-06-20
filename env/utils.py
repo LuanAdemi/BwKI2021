@@ -14,6 +14,7 @@ CARDS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK"
 # a decorator function for logging events
 def logged(f):
     def wrapper(*args):
+        # log with the logger attached to the class
         logger = args[0].logger
         if logger is not None:
             print(f.__name__)
@@ -21,6 +22,7 @@ def logged(f):
         return f(*args)
     return wrapper
 
+# converts a card string to an ascii art representation
 def cardToASCII(card):
     symbol = {"S": "♠", "H" :"♥", "C": "♣", "D": "♦"}
     template = ["" for _ in range(7)]
@@ -32,6 +34,7 @@ def cardToASCII(card):
     template[5] = f"│      {(symbol[card[0]] + card[1:]):3}│"
     template[6] = "└─────────┘"
     return template
+
 # a player class
 class Player:
     """
@@ -43,10 +46,11 @@ class Player:
     def numCards(self):
         return len(self.hand)
     
-    def __init__(self, id, logger=None):
+    def __init__(self, id):
         self.hand = []
         self.id = id
-
+        
+        # the logger for this player
         self.logger = logger
 
     def __repr__(self):
@@ -86,7 +90,11 @@ class Player:
 
 
 class Logger:
-    """A class that logs games to a file or wandb
+    """
+    A class that logs games to a file or wandb
+
+    TODO: Add a layer above the games, such as there is a instance 
+          only creating a wandb run for each training run with multiple epochs of games.
 
          -|Logger|-------> File & WandB
        /      |      \
