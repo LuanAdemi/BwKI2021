@@ -36,17 +36,42 @@ class MauMauEnv:
 
     # switches to the next player
     def nextPlayer(self):
-        self.currentPlayerID += 1 if self.currentPlayerID < len(self.players)-1 else -len(self.players)-1
+        if self.currentPlayerID < len(self.players)-1:
+            self.currentPlayerID += 1
+        else:
+            self.currentPlayerID = 0
 
     # performs a step in the environment
     # action is either a card string or the string "draw"
-    # TODO: end of game & REWARD <-- the hard part :/
+    # TODO: REWARD <-- the hard part :/
     def step(self, action):
-        self.currentPlayer.act(action)
-        self.nextPlayer()
-
-        reward = 0
         done = False
+        reward = 0
+        
+        # check whether the pullStack is empty
+        if self.pullStack.empty:
+            # get the top card of the play stack
+            topCard = self.playStack.last
+
+            # move all cards except the top one from the play stack to the pull stack
+            self.pullStack.stack = self.playStack.stack[:-1]
+            self.playStack.clear()
+            self.playStack.append(topCard)
+
+            # shuffle the pull stack
+            self.pullStack.shuffle()
+           
+        # perform a action with the current player
+        self.currentPlayer.act(action, self.playStack, self.pullStack)
+        
+        # if the hand is empty after the action, the game ends
+        if len(self.currentPlayer.hand) <= 0:
+            done = True
+        else:
+            # switch to the next player
+            self.nextPlayer()
+
+        # the next observation
         obs = (self.currentPlayer.hand, self.playStack.last)
         
         return obs, reward, done
@@ -69,7 +94,6 @@ class MauMauEnv:
         firstCard = self.pullStack.first
         self.pullStack.remove(firstCard)
         self.playStack.append(firstCard)
-
 
         reward = 0
         done = False
