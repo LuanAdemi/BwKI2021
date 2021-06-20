@@ -230,6 +230,14 @@ class Stack:
     @property
     def last(self):
         return self.stack[-1]
+    
+    # returns true if the stack is empty
+    @property
+    def empty(self):
+        if len(self.stack) > 0:
+            return False
+        else:
+            return True
 
     # creates a deck using the given colors and numbers
     def createDeck(self, colors, numbers):
