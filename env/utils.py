@@ -51,7 +51,7 @@ class Player:
     def numCards(self):
         return len(self.hand)
     
-    def __init__(self, id):
+    def __init__(self, id, logger=None):
         self.hand = []
         self.id = id
         
@@ -60,7 +60,14 @@ class Player:
 
     def __repr__(self):
         return f"Player(id={self.id}, hand={self.hand})"
-        
+    
+    def act(self, action, playStack, pullStack):
+        if action == "draw":
+            self.getCards(1, pullStack)
+        else:
+            assert action in CARDS, "The provided action is invalid"
+            self.playCard(action, playStack)
+
     # gets n cards from the stack
     @logged
     def getCards(self, n,  pullStack):
@@ -82,16 +89,23 @@ class Player:
         return False
 
     # returns a bool array containing all legal moves from the 53 moves in total
-    def getActionMask(self, playStack):
+    def getActionMask(self, playStack, binary=True):
         # all cards + drawing
-        mask = [0 for _ in range(len(CARDS)+1)]
+        mask = []
+        b_mask = [0 for _ in range(len(CARDS)+1)]
         for card in self.hand:
             if any(ele in playStack.last for ele in list(card)):
-                mask[CARDS.index(card)] = 1
+                b_mask[CARDS.index(card)] = 1
+                mask.append(card)
 
-        # drawing is always an option
-        mask[-1] = 1
-        return mask
+        # drawing is ALWAYS an option ( ͡° ͜ʖ ͡°)
+        b_mask[-1] = 1
+        mask.append("draw")
+        
+        if binary:
+            return b_mask
+        else:
+            return mask
 
 
 class Logger:
@@ -234,6 +248,8 @@ class Stack:
     def remove(self, item):
         self.stack.remove(item)
     
+    def clear(self):
+        self.stack.clear()
     # shuffles the stack
     def shuffle(self):
         amnt_to_shuffle = len(self.stack)
