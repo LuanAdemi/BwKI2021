@@ -13,6 +13,8 @@ class MauMauEnv:
         self.playStack = Stack('play')
         self.num_cards = num_cards
         
+        self.pile = 0
+
         # define our deck
         self.colors = typed.List(["D", "H", "C", "S"])
         self.numbers = typed.List(["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"])
@@ -47,6 +49,10 @@ class MauMauEnv:
     def step(self, action):
         done = False
         reward = 0
+
+        # check if there are pending cards in the pile
+        if self.pile > 0 and "7" not in action:
+            self.currentPlayer.getCards(self.pile, self.pullStack)
         
         # check whether the pullStack is empty
         if self.pullStack.empty:
@@ -60,16 +66,25 @@ class MauMauEnv:
 
             # shuffle the pull stack
             self.pullStack.shuffle()
-           
-        # perform a action with the current player
-        self.currentPlayer.act(action, self.playStack, self.pullStack)
         
+        # perform a action with the current player -> plays a card or draws
+        self.currentPlayer.act(action, self.playStack, self.pullStack)
+
+       
         # if the hand is empty after the action, the game ends
         if len(self.currentPlayer.hand) <= 0:
             done = True
         else:
             # switch to the next player
             self.nextPlayer()
+        
+        # special cards
+        if "8" in action:
+            # skip next player
+            self.nextPlayer()
+        
+        elif "7" in action:
+            self.pile += 2
 
         # the next observation
         obs = (self.currentPlayer.hand, self.playStack.last)

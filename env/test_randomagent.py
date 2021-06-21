@@ -5,7 +5,7 @@ import multiprocessing as mp
 # takes about 7 sec for JIT compilation, then goes brrrrr 
 # (10 + 7 = 17 sec for 4096 with 8 processes)
 
-num_processes = 8 # eight cores on my laptop
+num_processes = 4 # eight cores on my laptop
 
 # runs a random game
 def runRandomGame(n_games):
@@ -24,14 +24,14 @@ def runRandomGame(n_games):
             obs, reward, done = env.step(action)
             turns += 1
     
-        #print(f"winner: {env.currentPlayer}, iters: {turns}")
+        print(f"winner: {env.currentPlayer}, iters: {turns}")
 
 # store all the process objects
 processes = []
 
 # launch the processes
 for _ in range(num_processes):
-    p = mp.Process(target=runRandomGame, args=(512,)) # 8*512 = 4096 games
+    p = mp.Process(target=runRandomGame, args=(1,)) # 8*512 = 4096 games
     processes.append(p)
     p.start()
 

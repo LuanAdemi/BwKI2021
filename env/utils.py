@@ -80,9 +80,13 @@ class Player:
     def playCard(self, card, playStack):
         if card in self.hand:
             # rule set
-            if any(ele in playStack.last for ele in list(card)):
+            if any(ele in playStack.last for ele in list(card)) or "J" in card:
                 playStack.append(card)
-                self.hand.remove(card)
+                if "J" not in card:
+                    self.hand.remove(card)
+                else:
+                    js = [c for c in self.hand if "J" in card]
+                    self.hand.remove(js[0])
                 return True
                 
         print("[Warning] Card not playable.")
@@ -94,7 +98,7 @@ class Player:
         mask = []
         b_mask = [0 for _ in range(len(CARDS)+1)]
         for card in self.hand:
-            if any(ele in playStack.last for ele in list(card)):
+            if any(ele in playStack.last for ele in list(card)) or "J" in card:
                 b_mask[CARDS.index(card)] = 1
                 mask.append(card)
 
