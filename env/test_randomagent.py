@@ -2,6 +2,8 @@ from maumau import MauMauEnv
 import random
 import multiprocessing as mp
 
+# takes about 7 sec for JIT compilation, then goes brrrrr
+
 # runs a random game
 def runRandomGame():
     # create a new environment
@@ -24,7 +26,7 @@ def runRandomGame():
 processes = []
 
 # launch 8 games
-for _ in range(8):
+for _ in range(64):
     p = mp.Process(target=runRandomGame)
     processes.append(p)
     p.start()

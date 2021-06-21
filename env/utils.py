@@ -195,7 +195,8 @@ specs = [
 ]
 
 
-
+# Just In Time compilation with numba for the stack datastructure
+# enables runtimes in nanosecounds >>I AM SPEED<<
 @jitclass(specs)
 class Stack:
     """
