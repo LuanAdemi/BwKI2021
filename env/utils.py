@@ -93,7 +93,7 @@ class Player:
         return False
 
     # returns a bool array containing all legal moves from the 53 moves in total
-    def getActionMask(self, playStack, binary=True):
+    def getActionMask(self, pullStack, playStack, binary=True):
         # all cards + drawing
         mask = []
         b_mask = [0 for _ in range(len(CARDS)+1)]
@@ -102,9 +102,10 @@ class Player:
                 b_mask[CARDS.index(card)] = 1
                 mask.append(card)
 
-        # drawing is ALWAYS an option ( ͡° ͜ʖ ͡°)
-        b_mask[-1] = 1
-        mask.append("draw")
+        # drawing is ALWAYS an option ( ͡° ͜ʖ ͡°), except if there is nothing to draw from
+        if not pullStack.empty and len(playStack.stack) > 1:
+            b_mask[-1] = 1
+            mask.append("draw")
         
         if binary:
             return b_mask

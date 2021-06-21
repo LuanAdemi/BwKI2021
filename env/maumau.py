@@ -13,7 +13,7 @@ class MauMauEnv:
         self.playStack = Stack('play')
         self.num_cards = num_cards
         
-        self.pile = 0
+        self.pile = 0 # a pile for card drawing
 
         # define our deck
         self.colors = typed.List(["D", "H", "C", "S"])

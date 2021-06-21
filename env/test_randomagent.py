@@ -19,7 +19,7 @@ def runRandomGame(n_games):
         # main loop
         while not done:
             action = random.choice(
-                env.currentPlayer.getActionMask(env.playStack, binary=False)
+                env.currentPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
             )
             obs, reward, done = env.step(action)
             turns += 1
