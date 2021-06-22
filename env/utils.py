@@ -64,6 +64,8 @@ class Player:
     def act(self, action, playStack, pullStack):
         if action == "draw":
             self.getCards(1, pullStack)
+        elif action == "pass":
+            """pass"""
         else:
             assert action in CARDS, "The provided action is invalid"
             self.playCard(action, playStack)
@@ -85,27 +87,31 @@ class Player:
                 if "J" not in card:
                     self.hand.remove(card)
                 else:
-                    js = [c for c in self.hand if "J" in card]
+                    js = [c for c in self.hand if "J" in c]
                     self.hand.remove(js[0])
                 return True
                 
         print("[Warning] Card not playable.")
         return False
 
-    # returns a bool array containing all legal moves from the 53 moves in total
+    # returns a bool array containing all legal moves from the 54 moves in total
     def getActionMask(self, pullStack, playStack, binary=True):
         # all cards + drawing
         mask = []
-        b_mask = [0 for _ in range(len(CARDS)+1)]
+        b_mask = [0 for _ in range(len(CARDS)+2)]
         for card in self.hand:
             if any(ele in playStack.last for ele in list(card)) or "J" in card:
                 b_mask[CARDS.index(card)] = 1
                 mask.append(card)
 
         # drawing is ALWAYS an option ( ͡° ͜ʖ ͡°), except if there is nothing to draw from
-        if not pullStack.empty and len(playStack.stack) > 1:
-            b_mask[-1] = 1
+        if not pullStack.empty:
+            b_mask[-2] = 1
             mask.append("draw")
+
+        # pass
+        b_mask[-1] = 1
+        mask.append("pass")
         
         if binary:
             return b_mask

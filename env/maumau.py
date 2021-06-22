@@ -52,7 +52,9 @@ class MauMauEnv:
 
         # check if there are pending cards in the pile
         if self.pile > 0 and "7" not in action:
+            # if the current player has not played a seven, give the player these cards
             self.currentPlayer.getCards(self.pile, self.pullStack)
+            self.pile = 0 # reset the pile
         
         # check whether the pullStack is empty
         if self.pullStack.empty:
@@ -78,13 +80,13 @@ class MauMauEnv:
             # switch to the next player
             self.nextPlayer()
         
-        # special cards
-        if "8" in action:
-            # skip next player
-            self.nextPlayer()
+            # special cards
+            if "8" in action:
+                # skip next player
+                self.nextPlayer()
         
-        elif "7" in action:
-            self.pile += 2
+            elif "7" in action:
+                self.pile += 2
 
         # the next observation
         obs = (self.currentPlayer.hand, self.playStack.last)
