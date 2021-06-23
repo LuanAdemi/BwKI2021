@@ -118,7 +118,7 @@ class Player:
         else:
             return mask
 
-
+# loggs object methods decorated with the @logged decorator
 class Logger:
     """
     A class that logs games to a file or wandb
@@ -205,7 +205,6 @@ specs = [
     ('n', nm.int32)
 ]
 
-
 # Just In Time compilation with numba for the stack datastructure
 # enables runtimes in nanosecounds >>I AM SPEED<<
 @jitclass(specs)
@@ -284,10 +283,3 @@ class Stack:
         for c in cards:
             self.remove(c)
         return cards
-
-    # not working with numba, since reference to other class
-    # deals n cards to n player from the current deck
-#    def deal(self, players, num_cards):
-#        for _ in range(num_cards):
-#            for player in players:
-#                player.getCards(1, self)

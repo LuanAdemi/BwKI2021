@@ -48,7 +48,7 @@ class MauMauEnv:
     # TODO: REWARD <-- the hard part :/
     def step(self, action):
         done = False
-        reward = 0
+        reward = [0 for _ in range(len(self.players))]
 
         # check if there are pending cards in the pile
         if self.pile > 0 and "7" not in action:
@@ -76,6 +76,7 @@ class MauMauEnv:
         # if the hand is empty after the action, the game ends
         if len(self.currentPlayer.hand) <= 0:
             done = True
+            reward = [-1 if idx is not self.currentPlayerID else 1 for idx in range(len(self.players))]
         else:
             # switch to the next player
             self.nextPlayer()
@@ -112,8 +113,8 @@ class MauMauEnv:
         self.pullStack.remove(firstCard)
         self.playStack.append(firstCard)
 
-        reward = 0
         done = False
+        reward = [0 for _ in range(len(self.players))]
         obs = (self.currentPlayer.hand, self.playStack.last)
         return obs, reward, done
 
