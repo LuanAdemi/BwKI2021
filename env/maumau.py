@@ -1,10 +1,16 @@
 from utils import Player, Stack, Logger
 from numba import typed, types
+import numpy as np
+import torch
 
-# TODO: Implement special cards like the seven
+
+CARDS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA",
+         "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA",
+         "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA",
+         "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA"]
 
 class MauMauEnv:
-    def __init__(self, num_cards, num_players):
+    def __init__(self, num_cards, num_players, nhistory=8):
         
         # containers
         self.players = []
@@ -14,6 +20,8 @@ class MauMauEnv:
         self.num_cards = num_cards
         
         self.pile = 0 # a pile for card drawing
+        self.nhistory = nhistory # the history of actions passed to the observation
+        self.history = []
 
         # define our deck
         self.colors = typed.List(["D", "H", "C", "S"])
@@ -35,17 +43,36 @@ class MauMauEnv:
     @property
     def currentPlayer(self):
         return self.players[self.currentPlayerID]
+    
+    # returns the current players hand
+    def getCurrentHand(self, tensor=True):
+        hand = self.currentPlayer.hand
+        if tensor:
+            handMask = np.zeros(54)
+            for i, card in enumerate(CARDS):
+                if card in hand:
+                    handMask[i] = 1
 
+            return torch.tensor(handMask).reshape(6, 9)
+        else:
+            return self.hand
+   
+    # returns a tensor representation of a card
+    def cardToTensor(self, card):
+        cardTensor = np.zeros(54)
+        cardTensor[CARDS.index(card)] = 1
+        return torch.tensor(cardTensor).reshape(6, 9)
+    
     # switches to the next player
     def nextPlayer(self):
         if self.currentPlayerID < len(self.players)-1:
             self.currentPlayerID += 1
         else:
             self.currentPlayerID = 0
-
+    
     # performs a step in the environment
     # action is either a card string or the string "draw"
-    # TODO: REWARD <-- the hard part :/
+    # reward is like AlphaZero: Winner=1, Losers=-1
     def step(self, action):
         done = False
         reward = [0 for _ in range(len(self.players))]
@@ -90,7 +117,7 @@ class MauMauEnv:
                 self.pile += 2
 
         # the next observation
-        obs = (self.currentPlayer.hand, self.playStack.last)
+        obs = (self.getCurrentHand(), self.cardToTensor(self.playStack.last))
         
         return obs, reward, done
 
@@ -115,7 +142,5 @@ class MauMauEnv:
 
         done = False
         reward = [0 for _ in range(len(self.players))]
-        obs = (self.currentPlayer.hand, self.playStack.last)
+        obs = (self.getCurrentHand(), self.cardToTensor(self.playStack.last))
         return obs, reward, done
-
-
