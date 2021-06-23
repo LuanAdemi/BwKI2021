@@ -7,8 +7,13 @@ import multiprocessing as mp
 
 num_processes = 8 # eight cores on my laptop
 
+class RandomAgent:
+   
+    def act(self, obs, actionMask):
+        return random.choice(actionMask)
+
 # runs a random game
-def runRandomGame(n_games):
+def runRandomGame(n_games, model):
     for _ in range(n_games):
         # create a new environment
         env = MauMauEnv(5, 4)
@@ -18,21 +23,21 @@ def runRandomGame(n_games):
     
         # main loop
         while not done:
-            action = random.choice(
-                env.currentPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
-            )
-#            print(env.currentPlayer, obs[1], action)
+            aMask = env.currentPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
+            action = model.act(obs, aMask)
             obs, reward, done = env.step(action)
             turns += 1
         
-        print(f"winner: {env.currentPlayer}, iters: {turns}")
+        print(f"winner: {env.currentPlayer}, iters: {turns}, reward: {reward}")
 
 # store all the process objects
 processes = []
 
+model = RandomAgent()
+
 # launch the processes
 for _ in range(num_processes):
-    p = mp.Process(target=runRandomGame, args=(512,)) # 8*512 = 4096 games
+    p = mp.Process(target=runRandomGame, args=(512, model)) # 8*512 = 4096 games
     processes.append(p)
     p.start()
 
