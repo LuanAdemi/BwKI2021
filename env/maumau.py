@@ -1,17 +1,18 @@
 from utils import Player, Stack, Logger
 from numba import typed, types
+import numba as nb
 import numpy as np
 import torch
 from collections import deque
 
-ACTIONS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK", "DA",
-         "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "SJ", "SQ", "SK", "SA",
-         "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA",
-         "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA",
-         "draw", "pass"]
+ACTIONS = {"D2":0, "D3":1, "D4":2, "D5":3, "D6":4, "D7":5, "D8":6, "D9":7, "D10":8, "DJ":9, "DQ":10, "DK":11, "DA":12,
+           "S2":13, "S3":14, "S4":15, "S5":16, "S6":17, "S7":18, "S8":19, "S9":20, "S10":21, "SJ":22, "SQ":23, "SK":24, "SA":25,
+           "H2":26, "H3":27, "H4":28, "H5":29, "H6":30, "H7":31, "H8":32, "H9":33, "H10":34, "HJ":35, "HQ":36, "HK":37, "HA":38,
+           "C2":39, "C3":40, "C4":41, "C5":42, "C6":43, "C7":44, "C8":45, "C9":46, "C10":47, "CJ":48, "CQ":49, "CK":50, "CA":51,
+           "draw":52, "pass":53}
 
 class MauMauEnv:
-    def __init__(self, num_cards, num_players, nhistory=8):
+    def __init__(self, num_players, num_cards, nhistory=8):
         
         # containers
         self.players = []
@@ -21,8 +22,8 @@ class MauMauEnv:
         self.num_cards = num_cards
         
         self.pile = 0 # a pile for card drawing
-        self.nhistory = nhistory # the history of actions passed to the observation
-        self.history = deque(maxlen=nhistory)
+        self.nhistory = nhistory # the length of the history of actions passed to the observation
+        self.history = deque(maxlen=nhistory) # the deque for the history
         
         # fill the history with blanks
         for _ in range(nhistory):
@@ -50,25 +51,21 @@ class MauMauEnv:
         return self.players[self.currentPlayerID]
     
     # returns the current players hand
-    def getCurrentHand(self, tensor=True):
+    def handToTensor(self):
         hand = self.currentPlayer.hand
-        if tensor:
-            handMask = np.zeros(54)
-            for i, card in enumerate(ACTIONS[:-2]):
-                if card in hand:
-                    handMask[i] = 1
+        handMask = np.zeros(54)
+        for card in hand:
+            handMask[ACTIONS[card]] = 1
 
-            return torch.tensor(handMask).reshape(6, 9)
-        else:
-            return self.hand
-   
-    # returns a tensor representation of a card
-    def cardToTensor(self, card):
-        cardTensor = np.zeros(54)
-        if card in ACTIONS:
-            cardTensor[ACTIONS.index(card)] = 1
-        return torch.tensor(cardTensor).reshape(6, 9)
+        return torch.tensor(handMask).reshape(6, 9)
     
+    # OneHot-encodes a card string and turns it into a tensor
+    def cardToTensor(self, card):
+        oneHot = np.zeros(54)
+        if card in ACTIONS.keys():
+            oneHot[ACTIONS[card]] = 1
+        return torch.tensor(oneHot).reshape(6, 9)
+
     # switches to the next player
     def nextPlayer(self):
         if self.currentPlayerID < len(self.players)-1:
@@ -135,7 +132,8 @@ class MauMauEnv:
 
         # the next observation
         # currentPlayer's hand, current top card of the playstack and history
-        obs = (self.getCurrentHand(), self.cardToTensor(self.playStack.last), self.historyToTensor())
+        # (6, 9)                (6, 9)                                (8, 6, 9)
+        obs = (self.handToTensor(), self.cardToTensor(self.playStack.last), self.historyToTensor())
         
         return obs, reward, done
 
@@ -160,5 +158,5 @@ class MauMauEnv:
 
         done = False
         reward = [0 for _ in range(len(self.players))]
-        obs = (self.getCurrentHand(), self.cardToTensor(self.playStack.last))
+        obs = (self.handToTensor(), self.cardToTensor(self.playStack.last))
         return obs, reward, done
