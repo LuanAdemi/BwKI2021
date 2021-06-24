@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F #press F to pay respect
 
 import numpy as np
 
@@ -42,18 +42,17 @@ class ReplayBuffer(object):
 
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action):
+    def __init__(self, state_dim, action_dim):
         super(Actor, self).__init__()
 
-        self.l1 = nn.Linear(state_dim, 256)
-        self.l2 = nn.Linear(256, 256)
-        self.l3 = nn.Linear(256, action_dim)
-
-        self.max_action = max_action
+        self.l1 = nn.Conv2D(state_dim, 18)
+        self.l2 = nn.Conv2D(18, 18)
+        self.l3 = nn.Linear(18, action_dim)
 
     def forward(self, state):
         a = F.relu(self.l1(state))
         a = F.relu(self.l2(a))
+        a = a.view(-1, 1655) #!#!#
         return self.max_action * torch.tanh(self.l3(a))
 
 
@@ -62,24 +61,26 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
 
         # Q1 architecture
-        self.l1 = nn.Linear(state_dim + action_dim, 256)
-        self.l2 = nn.Linear(256, 256)
-        self.l3 = nn.Linear(256, 1)
+        self.l1 = nn.Conv2D(state_dim + action_dim, 32)
+        self.l2 = nn.Conv2D(32, 32)
+        self.l3 = nn.Linear(32, 1)
 
         # Q2 architecture
-        self.l4 = nn.Linear(state_dim + action_dim, 256)
-        self.l5 = nn.Linear(256, 256)
-        self.l6 = nn.Linear(256, 1)
+        self.l4 = nn.Conv2D(state_dim + action_dim, 32)
+        self.l5 = nn.Conv2D(32, 32)
+        self.l6 = nn.Linear(32, 1)
 
     def forward(self, state, action):
         sa = torch.cat([state, action], 1)
 
         q1 = F.relu(self.l1(sa))
         q1 = F.relu(self.l2(q1))
+        q1 = q1.view(-1, 1655) #!#!#
         q1 = self.l3(q1)
 
         q2 = F.relu(self.l4(sa))
         q2 = F.relu(self.l5(q2))
+        q2 = q2.view(-1, 1655) #!#!#
         q2 = self.l6(q2)
         return q1, q2
 
@@ -88,6 +89,7 @@ class Critic(nn.Module):
 
         q1 = F.relu(self.l1(sa))
         q1 = F.relu(self.l2(q1))
+        q1 = q1.view(-1, 1655) #!#!#
         q1 = self.l3(q1)
         return q1
 
