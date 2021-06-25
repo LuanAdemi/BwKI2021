@@ -57,14 +57,14 @@ class MauMauEnv:
         for card in hand:
             handMask[ACTIONS[card]] = 1
 
-        return torch.tensor(handMask).reshape(6, 9)
+        return np.array(handMask).reshape(1, 6, 9)
     
     # OneHot-encodes a card string and turns it into a tensor
     def cardToTensor(self, card):
         oneHot = np.zeros(54)
         if card in ACTIONS.keys():
             oneHot[ACTIONS[card]] = 1
-        return torch.tensor(oneHot).reshape(6, 9)
+        return np.array(oneHot).reshape(1, 6, 9)
 
     # switches to the next player
     def nextPlayer(self):
@@ -79,7 +79,7 @@ class MauMauEnv:
         for c in self.history:
             h.append(self.cardToTensor(c))
 
-        return torch.stack(h)
+        return np.stack(h).reshape(8, 6, 9)
     
     # performs a step in the environment
     # action is either a card string or the string "draw"
@@ -132,8 +132,8 @@ class MauMauEnv:
 
         # the next observation
         # currentPlayer's hand, current top card of the playstack and history
-        # (6, 9)                (6, 9)                                (8, 6, 9)
-        obs = (self.handToTensor(), self.cardToTensor(self.playStack.last), self.historyToTensor())
+        # (1, 6, 9)                (1, 6, 9)                                (8, 6, 9)
+        obs = np.hstack((self.handToTensor(), self.cardToTensor(self.playStack.last), self.historyToTensor()))
         
         return obs, reward, done
 
@@ -158,5 +158,5 @@ class MauMauEnv:
 
         done = False
         reward = [0 for _ in range(len(self.players))]
-        obs = (self.handToTensor(), self.cardToTensor(self.playStack.last))
+        obs = np.vstack((self.handToTensor(), self.cardToTensor(self.playStack.last), self.historyToTensor()))
         return obs, reward, done

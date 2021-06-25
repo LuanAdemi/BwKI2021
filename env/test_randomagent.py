@@ -5,7 +5,7 @@ import multiprocessing as mp
 # takes about 7 sec for JIT compilation, then goes brrrrr 
 # (10 + 7 = 17 sec for 4096 with 8 processes)
 
-num_processes = 8 # eight cores on my laptop
+num_processes = 16 # eight cores on my laptop
 
 class RandomAgent:
    

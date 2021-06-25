@@ -4,25 +4,27 @@ import torch.nn.functional as F #press F to pay respect
 
 import numpy as np
 
+device = torch.device("cpu")
 
 class ReplayBuffer(object):
-    def __init__(self, state_dim, action_dim, max_size=int(1e6)):
+    def __init__(self, state_dim, action_dim, n_players, max_size=int(1e6)):
         self.max_size = max_size
         self.ptr = 0
         self.size = 0
 
-        self.state = np.zeros((max_size, state_dim))
-        self.action = np.zeros((max_size, action_dim))
-        self.next_state = np.zeros((max_size, state_dim))
-        self.reward = np.zeros((max_size, 1))
+        self.states = np.zeros((max_size, state_dim[0], state_dim[1], state_dim[2]))
+        self.actions = np.zeros((max_size, action_dim[0], action_dim[1], action_dim[2]))
+        self.next_states = np.zeros((max_size, state_dim[0], state_dim[1], state_dim[2]))
+        self.reward = np.zeros((n_players, 1))
+        self.playerIDs = np.zeros((max_size, 1))
         self.not_done = np.zeros((max_size, 1))
 
     # adds a transition tuple to the buffer
-    def add(self, state, action, next_state, reward, done):
-        self.state[self.ptr] = state
-        self.action[self.ptr] = action
-        self.next_state[self.ptr] = next_state
-        self.reward[self.ptr] = reward
+    def add(self, playerID, obs, action, next_obs, reward, done):
+        self.states[self.ptr] = obs
+        self.actions[self.ptr] = action
+        self.next_states[self.ptr] = next_obs
+        self.playerIDs[self.ptr] = playerID
         self.not_done[self.ptr] = 1. - done
 
         self.ptr = (self.ptr + 1) % self.max_size
@@ -31,13 +33,12 @@ class ReplayBuffer(object):
     # returns a batch of the size batch_size, containing the past transitions
     def sample(self, batch_size):
         ind = np.random.randint(0, self.size, size=batch_size)
-
         return (
-            torch.FloatTensor(self.state[ind]).to(device),
-            torch.FloatTensor(self.action[ind]).to(device),
-            torch.FloatTensor(self.next_state[ind]).to(device),
-            torch.FloatTensor(self.reward[ind]).to(device),
-            torch.FloatTensor(self.not_done[ind]).to(device)
+            torch.FloatTensor(np.array(self.states[ind])).to(device),
+            torch.FloatTensor(np.array(self.actions[ind])).to(device),
+            torch.FloatTensor(np.array(self.next_states[ind])).to(device),
+            torch.FloatTensor(np.array(self.reward[self.playerIDs[ind].astype(int)])).to(device),
+            torch.FloatTensor(np.array(self.not_done[ind])).to(device)
 		)
 
 
