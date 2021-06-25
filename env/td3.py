@@ -1,9 +1,10 @@
-import torch
+import torch # ml supremacy
 import torch.nn as nn
 import torch.nn.functional as F # press F to pay respect
 
 import numpy as np
 
+# set the device
 device = torch.device("cpu")
 
 # a replay buffer class
@@ -34,6 +35,7 @@ class ReplayBuffer(object):
 
     # returns a batch of the size batch_size, containing the past transitions
     def sample(self, batch_size):
+        # get n random indexes
         ind = np.random.randint(0, self.size, size=batch_size)
         return (
             torch.FloatTensor(np.array(self.states[ind])).to(device),
@@ -48,15 +50,16 @@ class ReplayBuffer(object):
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Actor, self).__init__()
-
+        # the underlying model (Conv2d -> Conv2d -> Linear)
         self.model = nn.Sequential(
-            nn.Conv2d(state_dim, 18, 3),
+            nn.Conv2d(state_dim, 16, 3),
             nn.ReLU(),
-            nn.Conv2d(18, 18, 3),
+            nn.Conv2d(16, 16, 3),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(180, action_dim)
+            nn.Linear(160, action_dim)
         )
+
     def forward(self, state):
         return torch.tanh(self.model(state))
 
@@ -68,22 +71,22 @@ class Critic(nn.Module):
 
         # Q1 architecture
         self.q1 = nn.Sequential(
-            nn.Conv2d(state_dim + action_dim, 32, 3),
+            nn.Conv2d(state_dim + action_dim, 16, 3),
             nn.ReLU(),
-            nn.Conv2d(32, 32, 3),
-            nn.ReLU()
+            nn.Conv2d(16, 16, 3),
+            nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(32, 1) # correct dimensions
+            nn.Linear(160, 1) # correct dimensions
         )
 
         # Q2 architecture
         self.q2 = nn.Sequential(
-            nn.Conv2d(state_dim + action_dim, 32, 3),
+            nn.Conv2d(state_dim + action_dim, 16, 3),
             nn.ReLU(),
-            nn.Conv2D(32, 32, 3),
+            nn.Conv2D(16, 16, 3),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(32, 1) # correct dimensions
+            nn.Linear(160, 1) # correct dimensions
         )
 
     # returns the output of both Q-Networks
@@ -99,14 +102,14 @@ class Critic(nn.Module):
         q1 = self.q1(sa)
         return q1
 
-    # returns the output of Q1
+    # returns the output of Q2
     def Q2(self, state, action):
         sa = torch.cat([state, action], 1)
         q2 = self.q2(sa)
         return q2
 
 
-# Implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
+# Implementation of the Twin Delayed Deep Deterministic Policy Gradient Method (TD3)
 # Paper: https://arxiv.org/abs/1802.09477
 # GitHub: https://github.com/sfujim/TD3
 class TD3(object):
@@ -157,6 +160,7 @@ class TD3(object):
         with torch.no_grad():
             # calculate the exploration noise a
             noise = (torch.randn_like(action) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
+
             # select the action with the exploration noise a
             next_action = (self.actor_target(next_state) + noise).clamp(-self.max_action, self.max_action)
             
@@ -171,8 +175,10 @@ class TD3(object):
         # optimize current critic
         current_Q1, current_Q2 = self.critic(state, action)
         
+        # loss function of the critic
         critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
         
+        # optimization step
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
@@ -180,13 +186,15 @@ class TD3(object):
         # update the policy
         if self.total_it % self.policy_frequency == 0:
             
+            # loss function of the actor
             actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
             
+            # optimization step
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
             
-            # copy the parameters
+            # copy the optimized parameters from the current networks to the target networks
             for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
                 target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
 
