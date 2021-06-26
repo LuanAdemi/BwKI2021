@@ -45,6 +45,75 @@ class ReplayBuffer(object):
             torch.FloatTensor(np.array(self.not_done[ind])).to(device)
 		)
 
+# a class that trains a TD3 instance with the given environment
+# TODO: - implement actual training step
+#       - logging
+
+class Trainer(object):
+    def __init__(self, env):
+        self.env = env
+        
+        # the replaybuffer
+        self.buffer = ReplayBuffer(self.env.state_dim, self.env.action_dim, self.env.num_players)
+        
+        # the td3 instances for training and evaluation
+        self.td3 = TD3(self.env.state_dim, self.env.action_dim) # train this instance
+        sefl.prev_td3 = copy.deepcopy(self.td3) # evaluate against the last model version before the train step
+        self.random_agent = None # TODO: Evaluate against a random agent
+
+    # evaluates the current policy against the previous one and a random agent
+    # returns the amount of won games of n played games
+    def evaluate(self, n_games=128, n_processes=-1):
+        
+        # the number of processes to start
+        num_processes = mp.cpu_count() if num_processes == -1 else num_processes
+        
+        # base function for multiprocessing
+        def evaluationWorker(self, n_games):
+            rewards = []
+            
+            for i in range(n_games):
+                # three models -> three players
+                env = self.env(3, 5)
+        
+                # our agents
+                agents = [
+                    self.td3,
+                    self.prev_td3,
+                    self.random_agent
+                ]
+
+                # reset the env and obtain the initial observation
+                obs, reward, done = env.reset()
+        
+                # main loop
+                while not done:
+                    # get the action mask
+                    action_mask = env.currentPlayer.getActionMask(env.playStack)
+                    # select an action with the current agent
+                    # TODO: make use of the action mask
+                    action = agents[env.currentPlayerID].selectAction(obs)
+                    # perform a step in the environment
+                    env.step(action)
+                
+                rewards.append(reward)
+            
+            return rewards
+        
+        # container for the processes
+        processes = []
+        
+        # start the processes
+        for _ in range(num_processes):
+            p = mp.Process(target=evaluationWorker, args=(n_games//num_processes))
+            processes.append(p)
+            p.start()
+
+        # join the processes
+        for p in process:
+            p.join()
+
+#### WARNING: Possible dimension mismatch in the models. Haven't tested these!
 
 # a model containing the policy network π
 class Actor(nn.Module):
@@ -112,6 +181,8 @@ class Critic(nn.Module):
 # Implementation of the Twin Delayed Deep Deterministic Policy Gradient Method (TD3)
 # Paper: https://arxiv.org/abs/1802.09477
 # GitHub: https://github.com/sfujim/TD3
+# TODO: - make use of action masks
+
 class TD3(object):
     def __init__(
         self, 
