@@ -185,9 +185,9 @@ class Ethicist(nn.Module):
 
         # the model architecture
         self.model = nn.Sequential(
-            nn.Conv2d(state_dim, action_dim, 16, 3)
+            nn.Conv2d(state_dim, action_dim, 16, 3),
             nn.ReLU(),
-            nn.Conv2d(16, 16, 3)
+            nn.Conv2d(16, 16, 3),
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(160, 1)
