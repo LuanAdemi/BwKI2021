@@ -4,7 +4,7 @@ import torch.nn.functional as F # press F to pay respect
 
 import numpy as np
 
-from test_randomagent import RandomAgent
+from agents import RandomAgent
 
 # set the device
 device = torch.device("cpu")
@@ -39,7 +39,7 @@ class ReplayBuffer(object):
             for i, r in enumerate(reward):
                 self.reward[self.gameID][i] = r
             self.gameID += 1
-            print("hello")
+            #print("hello")
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
@@ -51,7 +51,7 @@ class ReplayBuffer(object):
             torch.FloatTensor(np.array(self.states[ind])).to(device),
             torch.FloatTensor(np.array(self.actions[ind])).to(device),
             torch.FloatTensor(np.array(self.next_states[ind])).to(device),
-            torch.FloatTensor(np.array(self.reward[self.gameIDs[ind].astype(int)][self.playerIDs[ind].astype(int)])).to(device),
+            torch.FloatTensor(np.array(self.reward[self.gameIDs[ind].astype(int)].flatten()[self.playerIDs[ind].astype(int)].flatten())).to(device),
             torch.FloatTensor(np.array(self.not_done[ind])).to(device)
         )
 

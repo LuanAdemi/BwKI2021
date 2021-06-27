@@ -7,10 +7,7 @@ import multiprocessing as mp
 
 num_processes = 16 # eight cores on my laptop
 
-class RandomAgent:
-   
-    def selectAction(self, actionMask):
-        return random.choice(actionMask)
+
 
 # runs a random game
 def runRandomGame(n_games, model):
