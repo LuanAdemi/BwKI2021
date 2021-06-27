@@ -133,7 +133,7 @@ class MauMauEnv:
         # the next observation
         # currentPlayer's hand, current top card of the playstack and history
         # (1, 6, 9)                (1, 6, 9)                                (8, 6, 9)
-        obs = np.hstack((self.handToTensor(), self.cardToTensor(self.playStack.last), self.historyToTensor()))
+        obs = np.vstack((self.handToTensor(), self.cardToTensor(self.playStack.last), self.historyToTensor()))
         
         return obs, reward, done
 

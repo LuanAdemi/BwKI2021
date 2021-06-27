@@ -4,6 +4,8 @@ import torch.nn.functional as F # press F to pay respect
 
 import numpy as np
 
+from test_randomagent import RandomAgent
+
 # set the device
 device = torch.device("cpu")
 
@@ -13,13 +15,16 @@ class ReplayBuffer(object):
         self.max_size = max_size
         self.ptr = 0
         self.size = 0
+        self.gameID = 0
+        self.maxGamesInBuffer = 512
         
         # containers
         self.states = np.zeros((max_size, state_dim[0], state_dim[1], state_dim[2]))
         self.actions = np.zeros((max_size, action_dim[0], action_dim[1], action_dim[2]))
         self.next_states = np.zeros((max_size, state_dim[0], state_dim[1], state_dim[2]))
-        self.reward = np.zeros((n_players, 1))
+        self.reward = np.zeros((self.maxGamesInBuffer, n_players, 1))
         self.playerIDs = np.zeros((max_size, 1))
+        self.gameIDs = np.zeros((max_size, 1))
         self.not_done = np.zeros((max_size, 1))
 
     # adds a transition tuple to the buffer
@@ -29,7 +34,12 @@ class ReplayBuffer(object):
         self.next_states[self.ptr] = next_obs
         self.playerIDs[self.ptr] = playerID
         self.not_done[self.ptr] = 1. - done
-
+        self.gameIDs[self.ptr] = self.gameID
+        if done:
+            for i, r in enumerate(reward):
+                self.reward[self.gameID][i] = r
+            self.gameID += 1
+            print("hello")
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
@@ -41,9 +51,9 @@ class ReplayBuffer(object):
             torch.FloatTensor(np.array(self.states[ind])).to(device),
             torch.FloatTensor(np.array(self.actions[ind])).to(device),
             torch.FloatTensor(np.array(self.next_states[ind])).to(device),
-            torch.FloatTensor(np.array(self.reward[self.playerIDs[ind].astype(int)])).to(device),
+            torch.FloatTensor(np.array(self.reward[self.gameIDs[ind].astype(int)][self.playerIDs[ind].astype(int)])).to(device),
             torch.FloatTensor(np.array(self.not_done[ind])).to(device)
-		)
+        )
 
 # a class that trains a TD3 instance with the given environment
 # TODO: - implement actual training step
@@ -59,7 +69,7 @@ class Trainer(object):
         # the td3 instances for training and evaluation
         self.td3 = TD3(self.env.state_dim, self.env.action_dim) # train this instance
         sefl.prev_td3 = copy.deepcopy(self.td3) # evaluate against the last model version before the train step
-        self.random_agent = None # TODO: Evaluate against a random agent
+        self.random_agent = RandomAgent()
 
     # evaluates the current policy against the previous one and a random agent
     # returns the amount of won games of n played games
@@ -89,12 +99,12 @@ class Trainer(object):
                 # main loop
                 while not done:
                     # get the action mask
-                    action_mask = env.currentPlayer.getActionMask(env.playStack)
+                    action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
                     # select an action with the current agent
                     # TODO: make use of the action mask
                     action = agents[env.currentPlayerID].selectAction(obs)
                     # perform a step in the environment
-                    env.step(action)
+                    obs, reward, done = env.step(action)
                 
                 rewards.append(reward)
             
@@ -112,6 +122,70 @@ class Trainer(object):
         # join the processes
         for p in process:
             p.join()
+    
+    def train(self, n_steps, n_processes):
+        B = ReplayBuffer(state_dimension, action_dimension)
+        policy = TD3(state_dimension, action_dimension, float(env.action_space.high[0]))
+
+        state, done = env.reset(), False
+        episode_reward = 0
+        episode_timesteps = 0
+        episode_num = 0
+        for t in range(int(1e6)):
+
+            episode_timesteps += 1
+
+            # Select action randomly or according to policy
+            if t < 25e3:
+                action = env.action_space.sample()
+
+            else:
+                action = (
+                    policy.select_action(np.array(state))
+                    + np.random.normal(0, max_action * 0.1, size=action_dimension)
+                ).clip(-max_action, max_action)
+
+            # Perform action
+            nextstate, reward, done,  = env.step([action]) 
+
+            # done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
+            # ^ not working, because the wrapper doesn't provide _max_episode_steps
+
+            done_bool = float(done) if episode_timesteps < 1000 else 0
+
+            # Store data in replay buffer
+            B.add(state, action, next_state, reward, done_bool)
+            state = next_state
+            episode_reward += reward
+
+
+
+            if render:
+                env.render()
+
+            # Train agent after collecting sufficient data
+            if t >= 25e3:
+                policy.train(B, 256)
+
+            if done: 
+                # Reset environment
+                state, done = env.reset(), False
+                episode_reward = 0
+                episode_timesteps = 0
+                episode_num += 1
+
+            # Evaluate episode
+            if (t + 1) % 5e3 == 0:
+                avg_reward = eval_policy(policy, env)
+                avg_reward2 = eval_policy(policy, env2)
+                evaluations.append(avg_reward)
+                evaluations2.append(avg_reward2)
+
+                clear_output(wait=True)
+                plt.plot(evaluations)
+                plt.plot(evaluations2)
+                plt.title('Reward over episodes times ten')
+                plt.show()
 
 #### WARNING: Possible dimension missmatch in the models. Haven't tested these!
 
@@ -236,7 +310,7 @@ class TD3(object):
         self.total_it = 0
     
     # selects an action given the a state using the current policy
-    def select_action(self, state):
+    def selectAction(self, state):
         state = torch.FloatTensor(state.reshape(1,-1)).to(device)
         return self.actor(state).cpu().data.numpy().flatten()
     

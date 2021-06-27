@@ -9,7 +9,7 @@ num_processes = 16 # eight cores on my laptop
 
 class RandomAgent:
    
-    def act(self, obs, actionMask):
+    def selectAction(self, actionMask):
         return random.choice(actionMask)
 
 # runs a random game
