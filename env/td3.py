@@ -4,6 +4,8 @@ import torch.nn.functional as F # press F to pay respect
 
 import numpy as np
 
+import copy
+
 import multiprocessing as mp
 
 from agents import RandomAgent
@@ -67,7 +69,7 @@ class Trainer(object):
         
         # the td3 instances for training and evaluation
         self.td3 = TD3(self.env.state_dim, self.env.action_dim) # train this instance
-        sefl.prev_td3 = copy.deepcopy(self.td3) # evaluate against the last model version before the train step
+        self.prev_td3 = copy.deepcopy(self.td3) # evaluate against the last model version before the train step
         self.random_agent = RandomAgent()
 
     # evaluates the current policy against the previous one and a random agent
@@ -195,7 +197,7 @@ class Actor(nn.Module):
             nn.Conv2d(16, 16, 3),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(160, action_dim)
+            nn.Linear(160, 54)
         )
 
     def forward(self, state):
@@ -221,7 +223,7 @@ class Critic(nn.Module):
         self.q2 = nn.Sequential(
             nn.Conv2d(state_dim + action_dim, 16, 3),
             nn.ReLU(),
-            nn.Conv2D(16, 16, 3),
+            nn.Conv2d(16, 16, 3),
             nn.ReLU(),
             nn.Flatten(),
             nn.Linear(160, 1) # correct dimensions
@@ -270,14 +272,12 @@ class Ethicist(nn.Module):
 # Implementation of the Twin Delayed Deep Deterministic Policy Gradient Method (TD3)
 # Paper: https://arxiv.org/abs/1802.09477
 # GitHub: https://github.com/sfujim/TD3
-# TODO: - make use of action masks
 
 class TD3(object):
     def __init__(
         self, 
         state_dimension, 
         action_dimension, 
-        max_action,
         discount=0.99, 
         tau=0.005, 
         policy_noise=0.2, 
@@ -285,7 +285,7 @@ class TD3(object):
         policy_frequency=2):
         
         # the actor containing the policy network
-        self.actor = Actor(state_dimension, action_dimension, max_action).to(device)
+        self.actor = Actor(state_dimension, action_dimension).to(device)
         self.actor_target = copy.deepcopy(self.actor)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=3e-4)
         
@@ -295,7 +295,6 @@ class TD3(object):
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=3e-4)
         
         # hyperparameters
-        self.max_action = max_action
         self.discount = discount
         self.tau = tau
         self.policy_noise = policy_noise 
@@ -306,10 +305,11 @@ class TD3(object):
     
     # selects an action given the a state using the current policy
     def selectAction(self, state, actionMask):
-        state = torch.FloatTensor(state.reshape(1,-1)).to(device)
-        pred = self.actor(state).cpu().data.numpy().flatten()
+        state = torch.FloatTensor(state).unsqueeze(0).to(device)
+        pred = self.actor(state).cpu().data.flatten()
         
-        return pred[actionMask]
+        masked_pred = pred * torch.tensor(actionMask)
+        return torch.argmax(masked_pred)
     
     
     # trains the policy and the q networks with the given replay buffer
