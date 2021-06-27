@@ -113,7 +113,7 @@ class Trainer(object):
         for p in process:
             p.join()
 
-#### WARNING: Possible dimension mismatch in the models. Haven't tested these!
+#### WARNING: Possible dimension missmatch in the models. Haven't tested these!
 
 # a model containing the policy network π
 class Actor(nn.Module):
@@ -176,6 +176,26 @@ class Critic(nn.Module):
         sa = torch.cat([state, action], 1)
         q2 = self.q2(sa)
         return q2
+
+# WIP -> new concept
+# a model responsible to predict the fairness of an action
+class Ethicist(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(Ethicist, self).__init__()
+
+        # the model architecture
+        self.model = nn.Sequential(
+            nn.Conv2d(state_dim, action_dim, 16, 3)
+            nn.ReLU(),
+            nn.Conv2d(16, 16, 3)
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(160, 1)
+        )
+
+    def forward(self, state, action):
+        sa = torch.cat([state, action], 1)
+        return self.model(sa)
 
 
 # Implementation of the Twin Delayed Deep Deterministic Policy Gradient Method (TD3)
