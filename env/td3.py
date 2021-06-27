@@ -4,6 +4,8 @@ import torch.nn.functional as F # press F to pay respect
 
 import numpy as np
 
+import multiprocessing as mp
+
 from agents import RandomAgent
 
 # set the device
@@ -39,7 +41,7 @@ class ReplayBuffer(object):
             for i, r in enumerate(reward):
                 self.reward[self.gameID][i] = r
             self.gameID += 1
-            #print("hello")
+
         self.ptr = (self.ptr + 1) % self.max_size
         self.size = min(self.size + 1, self.max_size)
 
@@ -62,9 +64,6 @@ class ReplayBuffer(object):
 class Trainer(object):
     def __init__(self, env):
         self.env = env
-        
-        # the replaybuffer
-        self.buffer = ReplayBuffer(self.env.state_dim, self.env.action_dim, self.env.num_players)
         
         # the td3 instances for training and evaluation
         self.td3 = TD3(self.env.state_dim, self.env.action_dim) # train this instance
@@ -102,7 +101,7 @@ class Trainer(object):
                     action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
                     # select an action with the current agent
                     # TODO: make use of the action mask
-                    action = agents[env.currentPlayerID].selectAction(obs)
+                    action = agents[env.currentPlayerID].selectAction(obs, action_mask)
                     # perform a step in the environment
                     obs, reward, done = env.step(action)
                 
@@ -123,69 +122,65 @@ class Trainer(object):
         for p in process:
             p.join()
     
-    def train(self, n_steps, n_processes):
-        B = ReplayBuffer(state_dimension, action_dimension)
-        policy = TD3(state_dimension, action_dimension, float(env.action_space.high[0]))
-
-        state, done = env.reset(), False
+    def train(self, n_steps, n_processes, *env_args):
+        # the environment
+        env = self.env(*env_args)
+        # the replaybuffer
+        B = ReplayBuffer(self.env.state_dim, self.env.action_dim, self.env.num_players)
+        
+        # reset
+        state, reward, done = env.reset()
         episode_reward = 0
         episode_timesteps = 0
         episode_num = 0
+        
+        # fill the whole buffer
         for t in range(int(1e6)):
+            
+            # retrieve the action mask
+            action_mask = env.currenPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
 
             episode_timesteps += 1
 
             # Select action randomly or according to policy
             if t < 25e3:
-                action = env.action_space.sample()
+                action = self.random_agent.selectAction(action_mask)
 
             else:
                 action = (
-                    policy.select_action(np.array(state))
+                    policy.selectAction(state)
                     + np.random.normal(0, max_action * 0.1, size=action_dimension)
                 ).clip(-max_action, max_action)
 
             # Perform action
-            nextstate, reward, done,  = env.step([action]) 
+            next_state, reward, done,  = env.step(action) 
 
-            # done_bool = float(done) if episode_timesteps < env._max_episode_steps else 0
-            # ^ not working, because the wrapper doesn't provide _max_episode_steps
-
-            done_bool = float(done) if episode_timesteps < 1000 else 0
+            #done_bool = float(done) if episode_timesteps < 1000 else 0
 
             # Store data in replay buffer
-            B.add(state, action, next_state, reward, done_bool)
+            B.add(state, env.cardToTensor(action), next_state, reward, done_bool)
             state = next_state
             episode_reward += reward
 
 
-
-            if render:
-                env.render()
-
             # Train agent after collecting sufficient data
             if t >= 25e3:
-                policy.train(B, 256)
+                self.td3.train(B, 256)
 
+            # if the episode ends
             if done: 
                 # Reset environment
-                state, done = env.reset(), False
+                state, reward, done = env.reset()
                 episode_reward = 0
                 episode_timesteps = 0
                 episode_num += 1
 
             # Evaluate episode
             if (t + 1) % 5e3 == 0:
-                avg_reward = eval_policy(policy, env)
-                avg_reward2 = eval_policy(policy, env2)
-                evaluations.append(avg_reward)
-                evaluations2.append(avg_reward2)
-
-                clear_output(wait=True)
-                plt.plot(evaluations)
-                plt.plot(evaluations2)
-                plt.title('Reward over episodes times ten')
-                plt.show()
+                print(self.evaluate())
+                
+                # copy the trained policy to the prev policy
+                self.prev_td3 = copy.deepcopy(self.td3)
 
 #### WARNING: Possible dimension missmatch in the models. Haven't tested these!
 
@@ -310,9 +305,11 @@ class TD3(object):
         self.total_it = 0
     
     # selects an action given the a state using the current policy
-    def selectAction(self, state):
+    def selectAction(self, state, actionMask):
         state = torch.FloatTensor(state.reshape(1,-1)).to(device)
-        return self.actor(state).cpu().data.numpy().flatten()
+        pred = self.actor(state).cpu().data.numpy().flatten()
+        
+        return pred[actionMask]
     
     
     # trains the policy and the q networks with the given replay buffer

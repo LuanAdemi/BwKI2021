@@ -11,6 +11,7 @@ ACTIONS = {"D2":0, "D3":1, "D4":2, "D5":3, "D6":4, "D7":5, "D8":6, "D9":7, "D10"
            "C2":39, "C3":40, "C4":41, "C5":42, "C6":43, "C7":44, "C8":45, "C9":46, "C10":47, "CJ":48, "CQ":49, "CK":50, "CA":51,
            "draw":52, "pass":53}
 
+
 class MauMauEnv:
     def __init__(self, num_players, num_cards, nhistory=8):
         
