@@ -199,7 +199,7 @@ class Actor(nn.Module):
         )
 
     def forward(self, state):
-        return torch.tanh(self.model(state))
+        return F.softmax(self.model(state))
 
 
 # a model containing the two Q-Networks Q1 and Q2
