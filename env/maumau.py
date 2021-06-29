@@ -11,10 +11,14 @@ ACTIONS = {"D2":0, "D3":1, "D4":2, "D5":3, "D6":4, "D7":5, "D8":6, "D9":7, "D10"
            "C2":39, "C3":40, "C4":41, "C5":42, "C6":43, "C7":44, "C8":45, "C9":46, "C10":47, "CJ":48, "CQ":49, "CK":50, "CA":51,
            "draw":52, "pass":53}
 
+ACTION_STR = {v : k for v,k in zip(ACTIONS.values(), ACTIONS.keys())}
 
 class MauMauEnv:
+    # env constants
+    state_dim = (10, 6, 9)
+    action_dim = (1, 6, 9)
+    
     def __init__(self, num_players, num_cards, nhistory=8):
-        
         # containers
         self.players = []
         self.currentPlayerID = 0
@@ -83,11 +87,13 @@ class MauMauEnv:
         return np.stack(h).reshape(8, 6, 9)
     
     # performs a step in the environment
-    # action is either a card string or the string "draw"
+    # action is either a number corresponding to the action
     # reward is like AlphaZero: Winner=1, Losers=-1
     def step(self, action):
         done = False
         reward = [0 for _ in range(len(self.players))]
+        
+        action = ACTION_STR[action]
 
         # check if there are pending cards in the pile
         if self.pile > 0 and "7" not in action:
