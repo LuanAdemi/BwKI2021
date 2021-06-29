@@ -1,7 +1,7 @@
 from maumau import MauMauEnv
 import random
 import multiprocessing as mp
-
+from agents import RandomAgent
 # takes about 7 sec for JIT compilation, then goes brrrrr 
 # (10 + 7 = 17 sec for 4096 with 8 processes)
 
@@ -21,7 +21,7 @@ def runRandomGame(n_games, model):
         # main loop
         while not done:
             aMask = env.currentPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
-            action = model.act(obs, aMask)
+            action = model.selectAction(obs, aMask)
             obs, reward, done = env.step(action)
             turns += 1
         
