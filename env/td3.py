@@ -68,19 +68,19 @@ class Trainer(object):
         self.env = env
         
         # the td3 instances for training and evaluation
-        self.td3 = TD3(self.env.state_dim, self.env.action_dim) # train this instance
+        self.td3 = TD3(self.env.state_dim[0], self.env.action_dim[0]) # train this instance
         self.prev_td3 = copy.deepcopy(self.td3) # evaluate against the last model version before the train step
         self.random_agent = RandomAgent()
 
     # evaluates the current policy against the previous one and a random agent
     # returns the amount of won games of n played games
-    def evaluate(self, n_games=128, n_processes=-1):
+    def evaluate(self, n_games=128, num_processes=-1):
         
         # the number of processes to start
         num_processes = mp.cpu_count() if num_processes == -1 else num_processes
         
         # base function for multiprocessing
-        def evaluationWorker(self, n_games):
+        def evaluationWorker(n_games):
             rewards = []
             
             for i in range(n_games):
@@ -102,10 +102,10 @@ class Trainer(object):
                     # get the action mask
                     action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
                     # select an action with the current agent
-                    # TODO: make use of the action mask
                     action = agents[env.currentPlayerID].selectAction(obs, action_mask)
+                    
                     # perform a step in the environment
-                    obs, reward, done = env.step(action)
+                    obs, reward, done = env.step(action.item())
                 
                 rewards.append(reward)
             
@@ -116,12 +116,12 @@ class Trainer(object):
         
         # start the processes
         for _ in range(num_processes):
-            p = mp.Process(target=evaluationWorker, args=(n_games//num_processes))
+            p = mp.Process(target=evaluationWorker, args=(n_games//num_processes,))
             processes.append(p)
             p.start()
 
         # join the processes
-        for p in process:
+        for p in processes:
             p.join()
     
     def train(self, n_steps, n_processes, *env_args):
@@ -307,8 +307,9 @@ class TD3(object):
     def selectAction(self, state, actionMask):
         state = torch.FloatTensor(state).unsqueeze(0).to(device)
         pred = self.actor(state).cpu().data.flatten()
-        
+        print(actionMask) 
         masked_pred = pred * torch.tensor(actionMask)
+        #print(masked_pred)
         return torch.argmax(masked_pred)
     
     
