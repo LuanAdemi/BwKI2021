@@ -16,6 +16,14 @@ CARDS = ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "DJ", "DQ", "DK"
          "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9", "H10", "HJ", "HQ", "HK", "HA",
          "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "CJ", "CQ", "CK", "CA"]
 
+ACTIONS = {"D2":0, "D3":1, "D4":2, "D5":3, "D6":4, "D7":5, "D8":6, "D9":7, "D10":8, "DJ":9, "DQ":10, "DK":11, "DA":12,
+           "S2":13, "S3":14, "S4":15, "S5":16, "S6":17, "S7":18, "S8":19, "S9":20, "S10":21, "SJ":22, "SQ":23, "SK":24, "SA":25,
+           "H2":26, "H3":27, "H4":28, "H5":29, "H6":30, "H7":31, "H8":32, "H9":33, "H10":34, "HJ":35, "HQ":36, "HK":37, "HA":38,
+           "C2":39, "C3":40, "C4":41, "C5":42, "C6":43, "C7":44, "C8":45, "C9":46, "C10":47, "CJ":48, "CQ":49, "CK":50, "CA":51,
+           "draw":52, "pass":53}
+
+ACTIONS_STR = {v:k for v,k in zip(ACTIONS.values(), ACTIONS.keys())}
+
 # a decorator function for logging events
 def logged(f):
     def wrapper(*args):
@@ -98,20 +106,20 @@ class Player:
     def getActionMask(self, pullStack, playStack, binary=True):
         # all cards + drawing
         mask = []
-        b_mask = [0 for _ in range(len(CARDS)+2)]
+        b_mask = [0 for _ in range(54)
         for card in self.hand:
             if any(ele in playStack.last for ele in list(card)) or "J" in card:
-                b_mask[CARDS.index(card)] = 1
-                mask.append(card)
+                b_mask[ACTIONS[card]] = 1
+                mask.append(ACTIONS[card])
 
         # drawing is ALWAYS an option ( ͡° ͜ʖ ͡°), except if there is nothing to draw from
         if not pullStack.empty:
             b_mask[-2] = 1
-            mask.append("draw")
+            mask.append(ACTIONS["draw"])
 
         # pass
         b_mask[-1] = 1
-        mask.append("pass")
+        mask.append(ACTIONS["pass"])
         
         if binary:
             return b_mask
