@@ -99,14 +99,14 @@ class Player:
                     self.hand.remove(js[0])
                 return True
                 
-        print("[Warning] Card not playable.")
+        print(f"[Warning] Card not playable. {card}")
         return False
 
     # returns a bool array containing all legal moves from the 54 moves in total
     def getActionMask(self, pullStack, playStack, binary=True):
         # all cards + drawing
         mask = []
-        b_mask = [0 for _ in range(54)
+        b_mask = [0 for _ in range(54)]
         for card in self.hand:
             if any(ele in playStack.last for ele in list(card)) or "J" in card:
                 b_mask[ACTIONS[card]] = 1
@@ -116,11 +116,9 @@ class Player:
         if not pullStack.empty:
             b_mask[-2] = 1
             mask.append(ACTIONS["draw"])
-
-        # pass
+       
         b_mask[-1] = 1
         mask.append(ACTIONS["pass"])
-        
         if binary:
             return b_mask
         else:

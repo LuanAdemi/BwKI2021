@@ -65,10 +65,10 @@ class ReplayBuffer(object):
 
 class Trainer(object):
     def __init__(self, env):
-        self.env = env
+        self.env_template = env
         
         # the td3 instances for training and evaluation
-        self.td3 = TD3(self.env.state_dim[0], self.env.action_dim[0]) # train this instance
+        self.td3 = TD3(self.env_template.state_dim[0], self.env_template.action_dim[0]) # train this instance
         self.prev_td3 = copy.deepcopy(self.td3) # evaluate against the last model version before the train step
         self.random_agent = RandomAgent()
 
@@ -85,7 +85,7 @@ class Trainer(object):
             
             for i in range(n_games):
                 # three models -> three players
-                env = self.env(3, 5)
+                env = self.env_template(3, 5)
         
                 # our agents
                 agents = [
@@ -96,16 +96,23 @@ class Trainer(object):
 
                 # reset the env and obtain the initial observation
                 obs, reward, done = env.reset()
-        
+                
+                timestep = 0
+
                 # main loop
                 while not done:
+                    timestep += 1
                     # get the action mask
                     action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
+                    
                     # select an action with the current agent
                     action = agents[env.currentPlayerID].selectAction(obs, action_mask)
                     
                     # perform a step in the environment
-                    obs, reward, done = env.step(action.item())
+                    obs, reward, done = env.step(int(action.item()))
+
+                    if timestep > 1000:
+                        done = True
                 
                 rewards.append(reward)
             
@@ -307,9 +314,7 @@ class TD3(object):
     def selectAction(self, state, actionMask):
         state = torch.FloatTensor(state).unsqueeze(0).to(device)
         pred = self.actor(state).cpu().data.flatten()
-        print(actionMask) 
         masked_pred = pred * torch.tensor(actionMask)
-        #print(masked_pred)
         return torch.argmax(masked_pred)
     
     
