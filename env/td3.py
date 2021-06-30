@@ -6,12 +6,11 @@ import numpy as np
 
 import copy
 
-import multiprocessing as mp
-
+from pathos.multiprocessing import ProcessingPool as Pool
 from agents import RandomAgent
 
 # set the device
-device = torch.device("cpu")
+device = torch.device("cuda")
 
 # a replay buffer class
 class ReplayBuffer(object):
@@ -74,72 +73,54 @@ class Trainer(object):
 
     # evaluates the current policy against the previous one and a random agent
     # returns the amount of won games of n played games
-    def evaluate(self, n_games=128, num_processes=-1):
-        
-        # the number of processes to start
-        num_processes = mp.cpu_count() if num_processes == -1 else num_processes
-        
+    def evaluate(self, n_games=4):
         # base function for multiprocessing
-        def evaluationWorker(n_games):
-            rewards = []
-            
-            for i in range(n_games):
-                # three models -> three players
-                env = self.env_template(3, 5)
+        rewards = []
+        for i in range(n_games):
+            # three models -> three players
+            env = self.env_template(3, 5)
         
-                # our agents
-                agents = [
-                    self.td3,
-                    self.prev_td3,
-                    self.random_agent
-                ]
+            # our agents
+            agents = [
+                self.td3,
+                self.prev_td3,
+                self.random_agent
+            ]
 
-                # reset the env and obtain the initial observation
-                obs, reward, done = env.reset()
+            # reset the env and obtain the initial observation
+            obs, reward, done = env.reset()
                 
-                timestep = 0
+            timestep = 0
 
-                # main loop
-                while not done:
-                    timestep += 1
-                    # get the action mask
-                    action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
+            # main loop
+            while not done:
+                timestep += 1
+                # get the action mask
+                action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
                     
-                    # select an action with the current agent
-                    action = agents[env.currentPlayerID].selectAction(obs, action_mask)
+                # select an action with the current agent
+                action = agents[env.currentPlayerID].selectAction(obs, action_mask)
                     
-                    # perform a step in the environment
-                    obs, reward, done = env.step(int(action.item()))
+                # perform a step in the environment
+                obs, reward, done = env.step(int(action.item()))
 
-                    if timestep > 1000:
-                        done = True
+                if timestep > 1000:
+                    done = True
                 
-                rewards.append(reward)
+            rewards.append(reward)
             
-            return rewards
+        return rewards
         
-        # container for the processes
-        processes = []
-        
-        # start the processes
-        for _ in range(num_processes):
-            p = mp.Process(target=evaluationWorker, args=(n_games//num_processes,))
-            processes.append(p)
-            p.start()
-
-        # join the processes
-        for p in processes:
-            p.join()
     
     def train(self, n_steps, n_processes, *env_args):
         # the environment
-        env = self.env(*env_args)
+        env = self.env_template(*env_args)
         # the replaybuffer
-        B = ReplayBuffer(self.env.state_dim, self.env.action_dim, self.env.num_players)
+        B = ReplayBuffer(self.env_template.state_dim, self.env_template.action_dim, env_args[0])
         
         # reset
         state, reward, done = env.reset()
-        episode_reward = 0
+        episode_reward = []
         episode_timesteps = 0
         episode_num = 0
         
@@ -147,40 +128,38 @@ class Trainer(object):
         for t in range(int(1e6)):
             
             # retrieve the action mask
-            action_mask = env.currenPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
+            action_mask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
 
             episode_timesteps += 1
 
             # Select action randomly or according to policy
             if t < 25e3:
-                action = self.random_agent.selectAction(action_mask)
+                action = self.random_agent.selectAction(state, action_mask)
 
             else:
-                action = (
-                    policy.selectAction(state)
-                    + np.random.normal(0, max_action * 0.1, size=action_dimension)
-                ).clip(-max_action, max_action)
+                action = self.td3.selectAction(state, action_mask)
 
             # Perform action
-            next_state, reward, done,  = env.step(action) 
+            next_state, reward, done,  = env.step(action.item()) 
 
-            #done_bool = float(done) if episode_timesteps < 1000 else 0
+            done_bool = float(done) if episode_timesteps < 1000 else 0
 
             # Store data in replay buffer
-            B.add(state, env.cardToTensor(action), next_state, reward, done_bool)
+            B.add(env.currentPlayerID, state, env.cardToTensor(action), next_state, reward, done_bool)
             state = next_state
-            episode_reward += reward
+            episode_reward.append(reward)
 
 
             # Train agent after collecting sufficient data
             if t >= 25e3:
+                print("Training...")
                 self.td3.train(B, 256)
 
             # if the episode ends
             if done: 
                 # Reset environment
                 state, reward, done = env.reset()
-                episode_reward = 0
+                episode_reward = []
                 episode_timesteps = 0
                 episode_num += 1
 
@@ -330,7 +309,8 @@ class TD3(object):
             noise = (torch.randn_like(action) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
 
             # select the action with the exploration noise a
-            next_action = (self.actor_target(next_state) + noise).clamp(-self.max_action, self.max_action)
+            # RuntimeError: The size of tensor a (54) must match the size of tensor b (9) at non-singleton dimension 3
+            next_action = (self.actor_target(next_state) + noise).clamp(0, 1)
             
             # extract the Q-Value of the target Critic using the competing Q-Networks -> prevents overestimating the Q-Value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
