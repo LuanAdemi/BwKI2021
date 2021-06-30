@@ -5,7 +5,7 @@ from agents import RandomAgent
 # takes about 7 sec for JIT compilation, then goes brrrrr 
 # (10 + 7 = 17 sec for 4096 with 8 processes)
 
-num_processes = 16 # eight cores on my laptop
+num_processes = 1 # eight cores on my laptop
 
 
 
@@ -20,9 +20,9 @@ def runRandomGame(n_games, model):
     
         # main loop
         while not done:
-            aMask = env.currentPlayer.getActionMask(env.pullStack, env.playStack, binary=False)
+            aMask = env.currentPlayer.getActionMask(env.pullStack, env.playStack)
             action = model.selectAction(obs, aMask)
-            obs, reward, done = env.step(action)
+            obs, reward, done = env.step(action.item())
             turns += 1
         
         print(f"winner: {env.currentPlayer}, iters: {turns}, reward: {reward}")
@@ -34,7 +34,7 @@ model = RandomAgent()
 
 # launch the processes
 for _ in range(num_processes):
-    p = mp.Process(target=runRandomGame, args=(512, model)) # 8*512 = 4096 games
+    p = mp.Process(target=runRandomGame, args=(1, model)) # 8*512 = 4096 games
     processes.append(p)
     p.start()
 
