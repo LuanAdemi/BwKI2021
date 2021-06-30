@@ -3,4 +3,4 @@ from maumau import MauMauEnv
 
 trainer_1 = Trainer(MauMauEnv)
 
-trainer_1.evaluate()
+trainer_1.evaluate(8, 8)
