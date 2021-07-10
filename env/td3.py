@@ -6,11 +6,10 @@ import numpy as np
 
 import copy
 
-from pathos.multiprocessing import ProcessingPool as Pool
 from agents import RandomAgent
 
 # set the device
-device = torch.device("cpu")
+device = torch.device("cuda")
 
 # a replay buffer class
 class ReplayBuffer(object):
@@ -54,7 +53,7 @@ class ReplayBuffer(object):
             torch.FloatTensor(np.array(self.states[ind])).to(device),
             torch.FloatTensor(np.array(self.actions[ind])).to(device),
             torch.FloatTensor(np.array(self.next_states[ind])).to(device),
-            torch.FloatTensor(np.array(self.reward[self.gameIDs[ind].astype(int)].flatten()[self.playerIDs[ind].astype(int)].flatten())).to(device),
+            torch.FloatTensor(np.array(self.reward[self.gameIDs[ind].astype(int)].flatten()[self.playerIDs[ind].astype(int)].flatten())).reshape(batch_size, 1).to(device),
             torch.FloatTensor(np.array(self.not_done[ind])).to(device)
         )
 
