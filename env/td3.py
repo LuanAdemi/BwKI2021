@@ -303,14 +303,13 @@ class TD3(object):
         
         # sample from the replay buffer
         state, action, next_state, reward, not_done = replayBuffer.sample(batch_size)
-        
+                
         with torch.no_grad():
             # calculate the exploration noise a
             noise = (torch.randn_like(action) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
-
+            
             # select the action with the exploration noise a
-            # RuntimeError: The size of tensor a (54) must match the size of tensor b (9) at non-singleton dimension 3
-            next_action = (self.actor_target(next_state) + noise).clamp(0, 1)
+            next_action = (self.actor_target(next_state).reshape(batch_size, 1, 6, 9) + noise).clamp(0, 1)
             
             # extract the Q-Value of the target Critic using the competing Q-Networks -> prevents overestimating the Q-Value
             target_Q1, target_Q2 = self.critic_target(next_state, next_action)
