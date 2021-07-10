@@ -10,7 +10,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 from agents import RandomAgent
 
 # set the device
-device = torch.device("cuda")
+device = torch.device("cpu")
 
 # a replay buffer class
 class ReplayBuffer(object):
@@ -112,7 +112,7 @@ class Trainer(object):
         return rewards
         
     
-    def train(self, n_steps, n_processes, *env_args):
+    def train(self, n_steps, *env_args):
         # the environment
         env = self.env_template(*env_args)
         # the replaybuffer
@@ -152,7 +152,7 @@ class Trainer(object):
 
             # Train agent after collecting sufficient data
             if t >= 25e3:
-                print("Training...")
+                #print("Training...")
                 self.td3.train(B, 256)
 
             # if the episode ends
@@ -298,7 +298,7 @@ class TD3(object):
     
     
     # trains the policy and the q networks with the given replay buffer
-    def train(self,replayBuffer, batch_size=200):
+    def train(self, replayBuffer, batch_size=200):
         self.total_it += 1
         
         # sample from the replay buffer
@@ -334,7 +334,7 @@ class TD3(object):
         if self.total_it % self.policy_frequency == 0:
             
             # loss function of the actor
-            actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
+            actor_loss = -self.critic.Q1(state, self.actor(state).reshape(batch_size, 1, 6, 9)).mean()
             
             # optimization step
             self.actor_optimizer.zero_grad()
