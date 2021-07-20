@@ -76,7 +76,7 @@ class Trainer(object):
         # base function for multiprocessing
         rewards = []
         for i in range(n_games):
-            # three models -> three players
+            # three models -> three players #TODO: not working for other envs like chess
             env = self.env_template(3, 5)
         
             # our agents
